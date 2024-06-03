@@ -11,6 +11,7 @@ import { useState } from "react";
 
 function ManageExpense({ route, navigation }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
   const expensesCtx = useContext(ExpensesContext);
 
   const editedExpenseId = route.params?.expenseId;
@@ -28,9 +29,14 @@ function ManageExpense({ route, navigation }) {
 
   function deleteExpenseHandler() {
     setIsSubmitting(true);
-    deleteExpense(editedExpenseId);
-    expensesCtx.deleteExpense(editedExpenseId);
-    navigation.goBack();
+    try {
+      deleteExpense(editedExpenseId);
+      expensesCtx.deleteExpense(editedExpenseId);
+      navigation.goBack();
+    } catch (error) {
+      setError("An error occurred while deleting the expense.");
+      setIsSubmitting(false);
+    }
   }
 
   function cancelHandler() {
@@ -39,14 +45,24 @@ function ManageExpense({ route, navigation }) {
 
   async function confirmHandler(expenseData) {
     setIsSubmitting(true);
-    if (isEditing) {
-      expensesCtx.updateExpense(editedExpenseId, expenseData);
-      await updateExpense(editedExpenseId, expenseData);
-    } else {
-      const id = await storeExpense(expenseData);
-      expensesCtx.addExpense({ id, ...expenseData });
+    try {
+      if (isEditing) {
+        expensesCtx.updateExpense(editedExpenseId, expenseData);
+        await updateExpense(editedExpenseId, expenseData);
+      } else {
+        const id = await storeExpense(expenseData);
+        expensesCtx.addExpense({ id, ...expenseData });
+      }
+
+      navigation.goBack();
+    } catch (error) {
+      setError("An error occurred while saving the expense.");
+      setIsSubmitting(false);
     }
-    navigation.goBack();
+  }
+
+  if (error && !isSubmitting) {
+    return <ErrorOverlay message={error} onConfirm={() => setError(null)} />;
   }
 
   if (isSubmitting) {
